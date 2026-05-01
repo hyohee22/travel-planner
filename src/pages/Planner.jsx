@@ -276,9 +276,20 @@ export default function Planner() {
           >
             + 일차 추가
           </button>
+          {manualDaysCount > 1 && (
+            <button 
+              onClick={() => {
+                setManualDaysCount(prev => Math.max(1, prev - 1));
+                if (activeDay > manualDaysCount - 1) setActiveDay(Math.max(1, manualDaysCount - 1));
+              }}
+              style={{ padding: '8px 16px', borderRadius: '20px', border: '1px dashed var(--color-danger)', backgroundColor: 'transparent', color: 'var(--color-danger)', cursor: 'pointer', whiteSpace: 'nowrap' }}
+            >
+              - 일차 삭제
+            </button>
+          )}
         </div>
 
-        <div className="timeline">
+        <div className="timeline" style={{ paddingBottom: '120px' }}>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={activeSchedule.map(s => s.id)} strategy={verticalListSortingStrategy}>
               {activeSchedule.map(item => (

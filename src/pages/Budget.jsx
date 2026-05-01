@@ -1,19 +1,22 @@
 import React, { useState } from 'react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
-import { Plus, Trash2, DollarSign, Settings, X } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 
+const CURRENCIES = [
+  { code: 'KRW', symbol: '₩', rate: 1, label: '원화 (KRW)' },
+  { code: 'JPY', symbol: '¥', rate: 9, label: '엔화 (JPY)' },
+  { code: 'USD', symbol: '$', rate: 1350, label: '달러 (USD)' },
+  { code: 'EUR', symbol: '€', rate: 1450, label: '유로 (EUR)' },
+];
+
 export default function Budget() {
-  const [expenses, setExpenses] = useLocalStorage('travel-budget-kr-v2', [
-    { id: '1', description: '항공권', amount: 350, category: '교통비' },
-    { id: '2', description: '호텔 (3박)', amount: 200, category: '숙박비' },
-  ]);
-  
-  const [exchangeRate, setExchangeRate] = useLocalStorage('travel-exchange-rate', 1350); // KRW per 1 unit of foreign currency
-  const [currencySymbol, setCurrencySymbol] = useLocalStorage('travel-currency-symbol', '$');
+  const [expenses, setExpenses] = useLocalStorage('travel-budget-kr-v2', []);
+  const [selectedCurrency, setSelectedCurrency] = useLocalStorage('travel-currency-code', 'JPY');
+
+  const activeCurrency = CURRENCIES.find(c => c.code === selectedCurrency) || CURRENCIES[1];
 
   const [newExpense, setNewExpense] = useState({ description: '', amount: '', category: '식비' });
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const categories = ['식비', '교통비', '숙박비', '활동/관광', '쇼핑', '기타'];
 
@@ -37,18 +40,35 @@ export default function Budget() {
   // Total in foreign currency
   const totalForeign = expenses.reduce((sum, item) => sum + item.amount, 0);
   // Total in KRW
-  const totalKRW = totalForeign * exchangeRate;
+  const totalKRW = totalForeign * activeCurrency.rate;
+  // Live KRW for new expense
+  const liveKRW = (parseFloat(newExpense.amount) || 0) * activeCurrency.rate;
 
   return (
     <div style={{ padding: '24px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <h1 className="page-title" style={{ marginBottom: 0 }}>예산 관리</h1>
-        <button 
-          onClick={() => setIsSettingsOpen(true)}
-          style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer' }}
+        
+        {/* Currency Selector Dropdown */}
+        <select 
+          value={selectedCurrency}
+          onChange={(e) => setSelectedCurrency(e.target.value)}
+          style={{ 
+            padding: '8px 12px', 
+            borderRadius: 'var(--radius-sm)', 
+            border: '1px solid var(--color-border)', 
+            backgroundColor: 'var(--color-surface)',
+            color: 'var(--color-primary)',
+            fontWeight: '600',
+            fontFamily: 'Outfit',
+            cursor: 'pointer',
+            outline: 'none'
+          }}
         >
-          <Settings size={24} />
-        </button>
+          {CURRENCIES.map(c => (
+            <option key={c.code} value={c.code}>{c.label}</option>
+          ))}
+        </select>
       </div>
       
       {/* Total Card */}
@@ -67,12 +87,12 @@ export default function Budget() {
           <span>₩{Math.round(totalKRW).toLocaleString()}</span>
         </div>
         <div style={{ fontSize: '14px', opacity: 0.8 }}>
-          외화 합계: {currencySymbol}{totalForeign.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+          외화 합계: {activeCurrency.symbol}{totalForeign.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
         </div>
       </div>
 
       <form onSubmit={handleAddExpense} className="card" style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' }}>
-        <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '4px' }}>지출 추가 ({currencySymbol})</h3>
+        <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '4px' }}>지출 추가 ({activeCurrency.symbol})</h3>
         
         <input 
           type="text" 
@@ -84,8 +104,8 @@ export default function Budget() {
         />
         
         <div style={{ display: 'flex', gap: '12px' }}>
-          <div style={{ position: 'relative', flex: 1 }}>
-            <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }}>{currencySymbol}</span>
+          <div style={{ position: 'relative', flex: 1, display: 'flex', flexDirection: 'column' }}>
+            <span style={{ position: 'absolute', left: '12px', top: '24px', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }}>{activeCurrency.symbol}</span>
             <input 
               type="number" 
               className="input-field" 
@@ -97,12 +117,17 @@ export default function Budget() {
               step="any"
               style={{ paddingLeft: '28px', width: '100%' }}
             />
+            {newExpense.amount && (
+              <span style={{ fontSize: '12px', color: 'var(--color-primary)', marginTop: '4px', fontWeight: '600' }}>
+                약 ₩{Math.round(liveKRW).toLocaleString()} 원
+              </span>
+            )}
           </div>
           <select 
             className="input-field" 
             value={newExpense.category}
             onChange={(e) => setNewExpense({...newExpense, category: e.target.value})}
-            style={{ flex: 1, backgroundColor: 'var(--color-surface)' }}
+            style={{ flex: 1, backgroundColor: 'var(--color-surface)', height: '45.6px' }}
           >
             {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
           </select>
@@ -127,10 +152,10 @@ export default function Budget() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontWeight: '600', color: 'var(--color-text)' }}>
-                  {currencySymbol}{item.amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                  {activeCurrency.symbol}{item.amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
                 </div>
                 <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
-                  ₩{Math.round(item.amount * exchangeRate).toLocaleString()}
+                  ₩{Math.round(item.amount * activeCurrency.rate).toLocaleString()}
                 </div>
               </div>
               <button 
@@ -148,44 +173,6 @@ export default function Budget() {
           </p>
         )}
       </div>
-
-      {/* Settings Modal */}
-      {isSettingsOpen && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h2 style={{ fontSize: '20px', fontWeight: '600' }}>환율 설정</h2>
-              <button onClick={() => setIsSettingsOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)' }}>
-                <X size={24} />
-              </button>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '14px', marginBottom: '4px', color: 'var(--color-text-muted)' }}>통화 기호 (예: $, ¥, €)</label>
-                <input 
-                  type="text" 
-                  className="input-field" 
-                  value={currencySymbol}
-                  onChange={e => setCurrencySymbol(e.target.value)}
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '14px', marginBottom: '4px', color: 'var(--color-text-muted)' }}>환율 (1 {currencySymbol} 당 원화)</label>
-                <input 
-                  type="number" 
-                  className="input-field" 
-                  value={exchangeRate}
-                  onChange={e => setExchangeRate(parseFloat(e.target.value) || 0)}
-                  step="any"
-                />
-              </div>
-              <button onClick={() => setIsSettingsOpen(false)} className="button-primary" style={{ marginTop: '8px' }}>
-                저장
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
