@@ -96,6 +96,7 @@ body {
 
 .content-area {
   flex: 1;
+  min-height: 0;
   position: relative;
   overflow-y: auto;
   overflow-x: hidden;
