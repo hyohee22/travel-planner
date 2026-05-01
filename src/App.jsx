@@ -10,7 +10,7 @@ function App() {
   const [activeTab, setActiveTab] = useState('planner');
 
   return (
-    <>
+    <div className="app-shell">
       <div className="app-container">
         <div className="content-area">
           <AnimatePresence mode="wait">
@@ -29,9 +29,9 @@ function App() {
             </motion.div>
           </AnimatePresence>
         </div>
+        <Navigation activeTab={activeTab} setActiveTab={setActiveTab} />
       </div>
-      <Navigation activeTab={activeTab} setActiveTab={setActiveTab} />
-    </>
+    </div>
   );
 }
 

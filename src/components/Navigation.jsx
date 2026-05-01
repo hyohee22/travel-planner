@@ -12,23 +12,19 @@ const navItems = [
 export default function Navigation({ activeTab, setActiveTab }) {
   return (
     <nav style={{
-      position: 'fixed',
-      bottom: 0,
-      left: '50%',
-      transform: 'translateX(-50%)',
       width: '100%',
-      maxWidth: '430px',
+      flexShrink: 0,
       height: 'var(--nav-height)',
-      background: 'rgba(255, 255, 255, 0.85)',
+      background: 'rgba(255, 255, 255, 0.92)',
       backdropFilter: 'blur(24px) saturate(180%)',
       WebkitBackdropFilter: 'blur(24px) saturate(180%)',
       borderTop: '1px solid rgba(245, 230, 224, 0.6)',
       display: 'flex',
       justifyContent: 'space-around',
       alignItems: 'center',
-      zIndex: 100,
       paddingBottom: 'env(safe-area-inset-bottom, 4px)',
       paddingTop: '4px',
+      zIndex: 100,
     }}>
       {navItems.map((item) => {
         const Icon = item.icon;
