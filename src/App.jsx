@@ -10,26 +10,28 @@ function App() {
   const [activeTab, setActiveTab] = useState('planner');
 
   return (
-    <div className="app-container">
-      <div className="content-area">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeTab}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
-            style={{ minHeight: '100%' }}
-          >
-            {activeTab === 'planner' && <Planner />}
-            {activeTab === 'map' && <MapPage />}
-            {activeTab === 'checklist' && <Checklist />}
-            {activeTab === 'budget' && <Budget />}
-          </motion.div>
-        </AnimatePresence>
+    <>
+      <div className="app-container">
+        <div className="content-area">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              style={{ minHeight: '100%' }}
+            >
+              {activeTab === 'planner' && <Planner />}
+              {activeTab === 'map' && <MapPage />}
+              {activeTab === 'checklist' && <Checklist />}
+              {activeTab === 'budget' && <Budget />}
+            </motion.div>
+          </AnimatePresence>
+        </div>
       </div>
       <Navigation activeTab={activeTab} setActiveTab={setActiveTab} />
-    </div>
+    </>
   );
 }
 

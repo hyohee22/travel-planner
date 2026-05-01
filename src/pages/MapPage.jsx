@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
-import { MapPin, Navigation as NavIcon, Map as MapIcon, LogIn, LogOut, ExternalLink, User } from 'lucide-react';
+import { MapPin, Map as MapIcon, ExternalLink } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
+import { motion } from 'framer-motion';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-// Fix for default Leaflet icon paths in React
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
@@ -13,13 +13,11 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
-// Component to dynamically fit bounds of markers
 function FitBounds({ positions }) {
   const map = useMap();
   useEffect(() => {
-    if (positions && positions.length > 0) {
-      const bounds = L.latLngBounds(positions);
-      map.fitBounds(bounds, { padding: [50, 50] });
+    if (positions?.length > 0) {
+      map.fitBounds(L.latLngBounds(positions), { padding: [50, 50] });
     }
   }, [map, positions]);
   return null;
@@ -27,233 +25,121 @@ function FitBounds({ positions }) {
 
 export default function MapPage() {
   const [schedule] = useLocalStorage('travel-schedule-kr-v3', []);
-  const [user, setUser] = useLocalStorage('guest-user', null);
   const [geocodeCache, setGeocodeCache] = useLocalStorage('travel-geocode-cache', {});
-  
-  const days = [...new Set(schedule.map(item => item.day))].sort((a, b) => a - b);
+  const days = [...new Set(schedule.map(i => i.day))].sort((a, b) => a - b);
   const [activeDayMap, setActiveDayMap] = useState(days.length > 0 ? days[0] : 1);
-  const activeDayLocations = schedule.filter(item => item.day === activeDayMap && item.place).sort((a, b) => a.time.localeCompare(b.time));
+  const activeDayLocations = schedule.filter(i => i.day === activeDayMap && i.place).sort((a, b) => a.time.localeCompare(b.time));
 
   const [geocodedLocations, setGeocodedLocations] = useState([]);
   const [isGeocoding, setIsGeocoding] = useState(false);
 
-  // Geocode places to get lat/lng using free Nominatim API
   useEffect(() => {
-    const geocodeLocations = async () => {
+    const geocode = async () => {
       setIsGeocoding(true);
-      const newGeocoded = [];
+      const results = [];
       const newCache = { ...geocodeCache };
-      let cacheUpdated = false;
-      
+      let updated = false;
       for (const item of activeDayLocations) {
         try {
           if (newCache[item.place]) {
-            newGeocoded.push({ ...item, location: newCache[item.place] });
+            results.push({ ...item, location: newCache[item.place] });
           } else {
-            // Free Nominatim API (1 request per second recommended)
-            await new Promise(r => setTimeout(r, 1000)); 
+            await new Promise(r => setTimeout(r, 1000));
             const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(item.place)}&limit=1`);
             const data = await res.json();
-            
-            if (data && data.length > 0) {
-              const location = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
-              newGeocoded.push({ ...item, location });
-              newCache[item.place] = location;
-              cacheUpdated = true;
+            if (data?.length > 0) {
+              const loc = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+              results.push({ ...item, location: loc });
+              newCache[item.place] = loc;
+              updated = true;
             }
           }
-        } catch (error) {
-          console.error("Geocoding failed for", item.place, error);
-        }
+        } catch (err) { console.error("Geocode error:", item.place, err); }
       }
-      
-      setGeocodedLocations(newGeocoded);
-      if (cacheUpdated) {
-        setGeocodeCache(newCache);
-      }
+      setGeocodedLocations(results);
+      if (updated) setGeocodeCache(newCache);
       setIsGeocoding(false);
     };
+    activeDayLocations.length > 0 ? geocode() : setGeocodedLocations([]);
+  }, [activeDayMap, schedule]);
 
-    if (activeDayLocations.length > 0) {
-      geocodeLocations();
-    } else {
-      setGeocodedLocations([]);
-    }
-  }, [activeDayMap, schedule]); // Depend on activeDayMap to re-trigger when day changes
+  const polyline = useMemo(() => geocodedLocations.map(l => [l.location.lat, l.location.lng]), [geocodedLocations]);
 
-  const polylinePositions = useMemo(() => {
-    return geocodedLocations.map(loc => [loc.location.lat, loc.location.lng]);
-  }, [geocodedLocations]);
-
-  const createNumberedIcon = (number) => {
-    return L.divIcon({
-      className: 'custom-div-icon',
-      html: `<div style="background-color: var(--color-primary); color: white; width: 32px; height: 32px; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); font-size: 14px;">${number}</div>`,
-      iconSize: [32, 32],
-      iconAnchor: [16, 16]
-    });
-  };
-
-  const login = () => {
-    // Mock Guest Login
-    setUser({ name: '사용자', loggedIn: true });
-  };
-
-  const handleLogout = () => {
-    setUser(null);
-  };
+  const numberedIcon = (n) => L.divIcon({
+    className: '', iconSize: [32, 32], iconAnchor: [16, 16],
+    html: `<div style="background:linear-gradient(135deg,#FF9A8B,#FECFEF);color:#fff;width:32px;height:32px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-weight:700;border:2.5px solid #fff;box-shadow:0 2px 8px rgba(255,154,139,0.4);font-size:13px;font-family:Outfit,sans-serif">${n}</div>`,
+  });
 
   return (
     <div style={{ padding: '24px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ padding: '10px', backgroundColor: 'var(--color-primary-light)', borderRadius: '12px', color: 'var(--color-primary)' }}>
-            <MapIcon size={28} />
-          </div>
-          <div>
-            <h1 className="page-title" style={{ marginBottom: '0' }}>장소 목록</h1>
-            <p className="page-subtitle">지도에서 일차별 동선을 확인하세요</p>
-          </div>
-        </div>
-        
-        {/* Mock Login Section */}
+      <div className="section-header">
+        <div className="section-icon"><MapIcon size={24} /></div>
         <div>
-          {user ? (
-            <button onClick={handleLogout} className="card" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', cursor: 'pointer', border: 'none', background: 'var(--color-surface)' }}>
-              <LogOut size={16} color="var(--color-text-muted)" />
-              <span style={{ fontSize: '14px', fontWeight: '600', color: 'var(--color-text)' }}>로그아웃</span>
-            </button>
-          ) : (
-            <button onClick={login} className="button-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', width: 'auto' }}>
-              <User size={16} />
-              <span style={{ fontSize: '14px' }}>로그인</span>
-            </button>
-          )}
+          <h1 className="page-title" style={{ marginBottom: 0 }}>장소 목록</h1>
+          <p className="page-subtitle">지도에서 일차별 동선을 확인하세요</p>
         </div>
       </div>
 
       {/* Day Selector */}
-      <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', marginBottom: '24px', paddingBottom: '8px', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+      <div className="day-selector" style={{ marginBottom: '20px' }}>
         {days.map(day => (
-          <button 
-            key={day}
-            onClick={() => setActiveDayMap(day)}
-            style={{
-              padding: '8px 16px',
-              borderRadius: '20px',
-              border: 'none',
-              backgroundColor: activeDayMap === day ? 'var(--color-primary)' : 'var(--color-surface)',
-              color: activeDayMap === day ? 'white' : 'var(--color-text-muted)',
-              fontWeight: activeDayMap === day ? '600' : '400',
-              cursor: 'pointer',
-              boxShadow: activeDayMap === day ? 'var(--shadow-sm)' : '0 2px 4px rgba(0,0,0,0.05)',
-              whiteSpace: 'nowrap'
-            }}
-          >
+          <button key={day} onClick={() => setActiveDayMap(day)} className={`day-pill ${activeDayMap === day ? 'day-pill--active' : 'day-pill--inactive'}`}>
             {day}일차
           </button>
         ))}
       </div>
 
-      {/* Leaflet Map */}
-      <div style={{ position: 'relative', marginBottom: '24px', height: '400px', borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)' }}>
+      {/* Map */}
+      <div style={{ position: 'relative', marginBottom: '20px', height: '360px', borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-md)' }}>
         {isGeocoding && (
-          <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(255,255,255,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ padding: '8px 16px', backgroundColor: 'var(--color-surface)', borderRadius: '20px', boxShadow: 'var(--shadow-sm)', fontWeight: '600', color: 'var(--color-primary)' }}>위치 불러오는 중...</span>
+          <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(255,248,246,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span style={{ padding: '10px 20px', backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-full)', boxShadow: 'var(--shadow-md)', fontWeight: '600', color: 'var(--color-primary)', fontSize: '14px' }}>위치 불러오는 중...</span>
           </div>
         )}
-        
-        <MapContainer 
-          center={[37.5665, 126.9780]} // Default Seoul
-          zoom={2} 
-          style={{ height: '100%', width: '100%', zIndex: 1 }}
-        >
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-          
-          {geocodedLocations.map((loc, index) => (
-            <Marker 
-              key={loc.id} 
-              position={[loc.location.lat, loc.location.lng]}
-              icon={createNumberedIcon(index + 1)}
-            >
-              <Popup>
-                <strong>{index + 1}. {loc.place}</strong><br />
-                {loc.time}
-              </Popup>
+        <MapContainer center={[37.5665, 126.9780]} zoom={2} style={{ height: '100%', width: '100%', zIndex: 1 }}>
+          <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+          {geocodedLocations.map((loc, i) => (
+            <Marker key={loc.id} position={[loc.location.lat, loc.location.lng]} icon={numberedIcon(i + 1)}>
+              <Popup><strong>{i + 1}. {loc.place}</strong><br />{loc.time}</Popup>
             </Marker>
           ))}
-
-          {polylinePositions.length > 1 && (
-            <Polyline 
-              positions={polylinePositions} 
-              pathOptions={{ color: 'var(--color-primary)', weight: 4, opacity: 0.8, dashArray: '8, 8' }} 
-            />
-          )}
-
-          {polylinePositions.length > 0 && <FitBounds positions={polylinePositions} />}
+          {polyline.length > 1 && <Polyline positions={polyline} pathOptions={{ color: '#FF9A8B', weight: 3, opacity: 0.7, dashArray: '8, 8' }} />}
+          {polyline.length > 0 && <FitBounds positions={polyline} />}
         </MapContainer>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        {activeDayLocations.map((item, index) => (
-          <div key={item.id} className="card" style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '16px', position: 'relative' }}>
-            {index < activeDayLocations.length - 1 && (
-              <div style={{ position: 'absolute', left: '32px', top: '48px', bottom: '-16px', width: '2px', backgroundColor: 'var(--color-border)', zIndex: 0 }} />
+      {/* Location Cards */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', paddingBottom: '40px' }}>
+        {activeDayLocations.map((item, i) => (
+          <motion.div key={item.id} className="card" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
+            style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '16px', position: 'relative' }}>
+            {i < activeDayLocations.length - 1 && (
+              <div style={{ position: 'absolute', left: '35px', top: '52px', bottom: '-12px', width: '2px', background: 'linear-gradient(180deg, var(--color-primary-light), transparent)', zIndex: 0 }} />
             )}
-            <div style={{ 
-              width: '32px', 
-              height: '32px', 
-              borderRadius: '16px', 
-              backgroundColor: 'var(--color-primary)', 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center',
-              fontWeight: '600',
-              color: 'white',
-              zIndex: 1
-            }}>
-              {index + 1}
+            <div style={{
+              width: '34px', height: '34px', borderRadius: '12px', background: 'var(--gradient-warm)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700', color: 'white', fontSize: '14px', zIndex: 1, flexShrink: 0,
+            }}>{i + 1}</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <h3 style={{ fontSize: '15px', fontWeight: '600', color: 'var(--color-text)', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.place}</h3>
+              <p style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>{item.time}</p>
             </div>
-            
-            <div style={{ flex: 1 }}>
-              <h3 style={{ fontSize: '16px', fontWeight: '600', color: 'var(--color-text)', marginBottom: '4px' }}>
-                {item.place}
-              </h3>
-              <p style={{ fontSize: '14px', color: 'var(--color-text-muted)' }}>
-                {item.time}
-              </p>
-            </div>
-            
-            <a 
-              href={item.mapLink || `https://maps.google.com/?q=${encodeURIComponent(item.place)}`}
-              target="_blank" 
-              rel="noopener noreferrer"
-              style={{ 
-                width: '40px', 
-                height: '40px', 
-                borderRadius: '20px', 
-                backgroundColor: 'var(--color-surface)', 
-                color: 'var(--color-primary)',
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center',
-                boxShadow: 'var(--shadow-sm)',
-                transition: 'transform 0.2s ease',
-                border: '1px solid var(--color-border)'
-              }}
-            >
-              <ExternalLink size={18} />
+            <a href={item.mapLink || `https://maps.google.com/?q=${encodeURIComponent(item.place)}`} target="_blank" rel="noopener noreferrer"
+              style={{ width: '38px', height: '38px', borderRadius: '12px', backgroundColor: 'var(--color-primary-ultralight)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'transform 0.2s' }}>
+              <ExternalLink size={16} />
             </a>
-          </div>
+          </motion.div>
         ))}
-
         {activeDayLocations.length === 0 && days.length > 0 && (
-          <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--color-text-muted)' }}>
-            <MapPin size={48} style={{ opacity: 0.2, margin: '0 auto 16px auto' }} />
+          <div className="empty-state">
+            <MapPin size={40} className="empty-state-icon" />
             <p>{activeDayMap}일차에 등록된 장소가 없습니다.</p>
+          </div>
+        )}
+        {days.length === 0 && (
+          <div className="empty-state">
+            <MapPin size={40} className="empty-state-icon" />
+            <p>일정 탭에서 먼저 장소를 추가해주세요.</p>
           </div>
         )}
       </div>

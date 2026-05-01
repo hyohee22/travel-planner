@@ -10,11 +10,11 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
-        name: '하늘색 여행 플래너',
-        short_name: '여행플래너',
+        name: 'Trippy - 나만의 여행 플래너',
+        short_name: 'Trippy',
         description: '나만의 완벽한 여행 일정을 만들어보세요',
-        theme_color: '#89CFF0',
-        background_color: '#F8FAFC',
+        theme_color: '#FF9A8B',
+        background_color: '#FFF8F6',
         display: 'standalone',
         icons: [
           {

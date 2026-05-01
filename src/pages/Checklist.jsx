@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { Plus, Trash2, Check, ShoppingBag, Briefcase } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Checklist() {
   const [packingItems, setPackingItems] = useLocalStorage('travel-checklist-kr', [
@@ -9,13 +10,11 @@ export default function Checklist() {
     { id: '2', text: '핸드폰 충전기', completed: false },
     { id: '3', text: '멀티 어댑터', completed: false },
   ]);
-
   const [shoppingItems, setShoppingItems] = useLocalStorage('travel-shopping-list-kr', [
     { id: '1', text: '기념 마그넷', completed: false },
     { id: '2', text: '가족 선물', completed: false },
   ]);
-  
-  const [activeTab, setActiveTab] = useState('packing'); // 'packing' or 'shopping'
+  const [activeTab, setActiveTab] = useState('packing');
   const [newItemText, setNewItemText] = useState('');
 
   const items = activeTab === 'packing' ? packingItems : shoppingItems;
@@ -24,15 +23,12 @@ export default function Checklist() {
   const handleAddItem = (e) => {
     e.preventDefault();
     if (!newItemText.trim()) return;
-    
     setItems([...items, { id: uuidv4(), text: newItemText, completed: false }]);
     setNewItemText('');
   };
 
   const toggleItem = (id) => {
-    setItems(items.map(item => 
-      item.id === id ? { ...item, completed: !item.completed } : item
-    ));
+    setItems(items.map(item => item.id === id ? { ...item, completed: !item.completed } : item));
   };
 
   const deleteItem = (id) => {
@@ -44,125 +40,86 @@ export default function Checklist() {
 
   return (
     <div style={{ padding: '24px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
-        <h1 className="page-title" style={{ marginBottom: 0 }}>
-          {activeTab === 'packing' ? '준비물 체크리스트' : '쇼핑 리스트'}
-        </h1>
+      {/* Header */}
+      <div className="section-header" style={{ marginBottom: '24px' }}>
+        <div className="section-icon">
+          {activeTab === 'packing' ? <Briefcase size={24} /> : <ShoppingBag size={24} />}
+        </div>
+        <div>
+          <h1 className="page-title" style={{ marginBottom: 0 }}>
+            {activeTab === 'packing' ? '준비물 체크리스트' : '쇼핑 리스트'}
+          </h1>
+          <p className="page-subtitle">{items.length}개 중 {completedCount}개 {activeTab === 'packing' ? '챙김' : '구매완료'}</p>
+        </div>
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', backgroundColor: 'var(--color-surface)', padding: '4px', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>
-        <button 
-          onClick={() => setActiveTab('packing')}
-          style={{ 
-            flex: 1, 
-            padding: '10px', 
-            borderRadius: '8px', 
-            border: 'none', 
-            backgroundColor: activeTab === 'packing' ? 'var(--color-primary-light)' : 'transparent',
-            color: activeTab === 'packing' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-            fontWeight: '600',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px',
-            transition: 'all 0.2s ease'
-          }}
-        >
-          <Briefcase size={18} />
-          준비물
-        </button>
-        <button 
-          onClick={() => setActiveTab('shopping')}
-          style={{ 
-            flex: 1, 
-            padding: '10px', 
-            borderRadius: '8px', 
-            border: 'none', 
-            backgroundColor: activeTab === 'shopping' ? 'var(--color-primary-light)' : 'transparent',
-            color: activeTab === 'shopping' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-            fontWeight: '600',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px',
-            transition: 'all 0.2s ease'
-          }}
-        >
-          <ShoppingBag size={18} />
-          쇼핑 리스트
-        </button>
+      <div style={{ display: 'flex', gap: '4px', marginBottom: '20px', backgroundColor: 'var(--color-primary-ultralight)', padding: '4px', borderRadius: 'var(--radius-sm)' }}>
+        {[
+          { key: 'packing', label: '준비물', icon: <Briefcase size={16} /> },
+          { key: 'shopping', label: '쇼핑 리스트', icon: <ShoppingBag size={16} /> },
+        ].map(tab => (
+          <button key={tab.key} onClick={() => setActiveTab(tab.key)} style={{
+            flex: 1, padding: '10px', borderRadius: '10px', border: 'none',
+            background: activeTab === tab.key ? 'var(--color-surface)' : 'transparent',
+            color: activeTab === tab.key ? 'var(--color-primary)' : 'var(--color-text-muted)',
+            fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center',
+            justifyContent: 'center', gap: '6px', transition: 'all 0.25s ease', fontSize: '14px',
+            boxShadow: activeTab === tab.key ? 'var(--shadow-sm)' : 'none', fontFamily: 'Outfit',
+          }}>
+            {tab.icon} {tab.label}
+          </button>
+        ))}
       </div>
 
-      <p className="page-subtitle" style={{ marginBottom: '16px' }}>
-        {items.length}개 중 {completedCount}개 {activeTab === 'packing' ? '챙김' : '구매완료'}
-      </p>
-
-      {/* Progress Bar */}
-      <div style={{ width: '100%', height: '8px', backgroundColor: 'var(--color-border)', borderRadius: '4px', marginBottom: '32px', overflow: 'hidden' }}>
-        <div style={{ 
-          height: '100%', 
-          width: `${progress}%`, 
-          backgroundColor: 'var(--color-primary)',
-          transition: 'width 0.3s ease'
-        }} />
+      {/* Progress */}
+      <div style={{ marginBottom: '24px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+          <span style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>진행률</span>
+          <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--color-primary)' }}>{Math.round(progress)}%</span>
+        </div>
+        <div className="progress-bar-track">
+          <div className="progress-bar-fill" style={{ width: `${progress}%` }} />
+        </div>
       </div>
 
-      <form onSubmit={handleAddItem} style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
-        <input 
-          type="text" 
-          className="input-field" 
-          placeholder={activeTab === 'packing' ? '새 준비물 추가...' : '새 쇼핑 아이템 추가...'}
-          value={newItemText}
-          onChange={(e) => setNewItemText(e.target.value)}
-        />
-        <button type="submit" className="button-primary" style={{ width: 'auto', padding: '12px 16px' }}>
+      {/* Add Form */}
+      <form onSubmit={handleAddItem} style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
+        <input type="text" className="input-field" placeholder={activeTab === 'packing' ? '새 준비물 추가...' : '새 쇼핑 아이템 추가...'} value={newItemText} onChange={(e) => setNewItemText(e.target.value)} />
+        <motion.button type="submit" className="button-primary" style={{ width: 'auto', padding: '12px 16px', borderRadius: 'var(--radius-sm)' }} whileTap={{ scale: 0.92 }}>
           <Plus size={20} />
-        </button>
+        </motion.button>
       </form>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        {items.map(item => (
-          <div key={item.id} className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', flex: 1 }} onClick={() => toggleItem(item.id)}>
-              <div style={{
-                width: '24px',
-                height: '24px',
-                borderRadius: '6px',
-                border: item.completed ? 'none' : '2px solid var(--color-border)',
-                backgroundColor: item.completed ? 'var(--color-primary)' : 'transparent',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'white',
-                transition: 'all 0.2s ease'
-              }}>
-                {item.completed && <Check size={16} />}
+      {/* List */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', paddingBottom: '40px' }}>
+        <AnimatePresence>
+          {items.map(item => (
+            <motion.div key={item.id} className="card" layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -60, height: 0, marginBottom: 0, padding: 0 }} transition={{ duration: 0.25 }}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', cursor: 'pointer', flex: 1, minWidth: 0 }} onClick={() => toggleItem(item.id)}>
+                <motion.div className={`checkbox ${item.completed ? 'checkbox--checked' : ''}`} whileTap={{ scale: 0.85 }}>
+                  {item.completed && <Check size={14} strokeWidth={3} />}
+                </motion.div>
+                <span style={{
+                  fontSize: '15px', color: item.completed ? 'var(--color-text-muted)' : 'var(--color-text)',
+                  textDecoration: item.completed ? 'line-through' : 'none', transition: 'all 0.2s ease',
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>
+                  {item.text}
+                </span>
               </div>
-              <span style={{ 
-                fontSize: '16px', 
-                color: item.completed ? 'var(--color-text-muted)' : 'var(--color-text)',
-                textDecoration: item.completed ? 'line-through' : 'none',
-                transition: 'all 0.2s ease'
-              }}>
-                {item.text}
-              </span>
-            </div>
-            
-            <button 
-              onClick={(e) => { e.stopPropagation(); deleteItem(item.id); }}
-              style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', padding: '4px' }}
-            >
-              <Trash2 size={18} />
-            </button>
-          </div>
-        ))}
+              <button onClick={(e) => { e.stopPropagation(); deleteItem(item.id); }}
+                style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', padding: '4px', opacity: 0.5, transition: 'opacity 0.2s' }}>
+                <Trash2 size={16} />
+              </button>
+            </motion.div>
+          ))}
+        </AnimatePresence>
         {items.length === 0 && (
-          <p style={{ textAlign: 'center', color: 'var(--color-text-muted)', marginTop: '20px' }}>
-            {activeTab === 'packing' ? '준비물 체크리스트가 비어 있습니다.' : '쇼핑 리스트가 비어 있습니다.'}
-          </p>
+          <div className="empty-state">
+            <p>{activeTab === 'packing' ? '준비물 체크리스트가 비어 있습니다.' : '쇼핑 리스트가 비어 있습니다.'}</p>
+          </div>
         )}
       </div>
     </div>
