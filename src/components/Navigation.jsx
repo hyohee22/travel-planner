@@ -12,8 +12,10 @@ const navItems = [
 export default function Navigation({ activeTab, setActiveTab }) {
   return (
     <nav style={{
-      width: '100%',
-      flexShrink: 0,
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
       height: 'var(--nav-height)',
       background: 'rgba(255, 255, 255, 0.92)',
       backdropFilter: 'blur(24px) saturate(180%)',
